@@ -223,28 +223,96 @@ export async function getArtist(artistId: string): Promise<SpotifyArtist | null>
 
 /**
  * Get top tracks for artist.
+ * Resolves local catalog IDs (artist-*) by searching Spotify for the artist name.
+ * Returns [] instead of fake placeholder titles when APIs fail.
  */
-export async function getArtistTopTracks(artistId: string): Promise<SpotifyTrack[]> {
+export async function getArtistTopTracks(
+  artistId: string,
+  artistNameHint?: string
+): Promise<SpotifyTrack[]> {
   const token = await getSpotifyToken();
-  if (token && !artistId.startsWith('artist-')) {
-    try {
-      const res = await fetch(`https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=US`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.tracks || [];
+  let spotifyId = artistId;
+
+  // Local dataset IDs are not Spotify IDs — resolve by name search first
+  if (!token) return [];
+
+  if (artistId.startsWith('artist-') || artistNameHint) {
+    const name =
+      artistNameHint ||
+      (ALL_ARTISTS as any[]).find((a) => a.id === artistId)?.name;
+    if (name) {
+      try {
+        const res = await fetch(
+          `https://api.spotify.com/v1/search?type=artist&q=${encodeURIComponent(name)}&limit=5`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const items = data.artists?.items || [];
+          const match =
+            items.find(
+              (a: any) => a.name?.toLowerCase() === name.toLowerCase()
+            ) || items[0];
+          if (match?.id) spotifyId = match.id;
+        }
+      } catch {
+        // continue with original id
       }
-    } catch (e) {}
+    }
   }
 
-  // Fallback track list
-  const local = (ALL_ARTISTS as any[]).find(a => a.id === artistId);
-  const name = local?.name || 'Artist';
+  if (spotifyId.startsWith('artist-')) return [];
 
-  return [
-    { id: 't1', name: `${name} - Top Anthem`, duration_ms: 214000, preview_url: null, album: { name: 'Greatest Hits', images: [{ url: 'https://picsum.photos/300' }] } },
-    { id: 't2', name: `${name} - Midnight Session`, duration_ms: 198000, preview_url: null, album: { name: 'Greatest Hits', images: [{ url: 'https://picsum.photos/300' }] } },
-    { id: 't3', name: `${name} - Acoustic Remix`, duration_ms: 245000, preview_url: null, album: { name: 'Greatest Hits', images: [{ url: 'https://picsum.photos/300' }] } },
-  ];
+  try {
+    const res = await fetch(
+      `https://api.spotify.com/v1/artists/${spotifyId}/top-tracks?market=US`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      return data.tracks || [];
+    }
+  } catch (e) {}
+
+  return [];
+}
+
+/**
+ * Search Spotify for a specific track by song + artist name.
+ */
+export async function searchSpotifyTrack(
+  song: string,
+  artist: string
+): Promise<SpotifyTrack | null> {
+  const token = await getSpotifyToken();
+  if (!token) return null;
+
+  try {
+    const q = `track:${song} artist:${artist}`;
+    const res = await fetch(
+      `https://api.spotify.com/v1/search?type=track&q=${encodeURIComponent(q)}&limit=5`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const items = data.tracks?.items || [];
+    if (items.length === 0) return null;
+
+    const lowerSong = song.toLowerCase();
+    const lowerArtist = artist.toLowerCase();
+    const exact =
+      items.find(
+        (t: any) =>
+          t.name?.toLowerCase() === lowerSong &&
+          t.artists?.some((a: any) => a.name?.toLowerCase() === lowerArtist)
+      ) ||
+      items.find((t: any) =>
+        t.artists?.some((a: any) => a.name?.toLowerCase() === lowerArtist)
+      ) ||
+      items[0];
+
+    return exact as SpotifyTrack;
+  } catch {
+    return null;
+  }
 }

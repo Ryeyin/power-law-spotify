@@ -7,9 +7,10 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useClerk } from '@clerk/clerk-expo';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useUserDoc } from '../../hooks/useUserDoc';
 import { StatRow } from '../../components/StatRow';
 import { TrackedArtistRow } from '../../components/TrackedArtistRow';
@@ -17,11 +18,15 @@ import { getTrackedArtists, TrackedArtist } from '../../lib/trackedArtists';
 import { getInvestments } from '../../lib/investments';
 import { getTransactions } from '../../lib/transactions';
 import { lookupArtistPrice } from '../../lib/artistLookup';
+import { getSavedPlaylists, deleteSavedPlaylist, SavedPlaylist } from '../../lib/savedPlaylists';
 
 export default function ProfileScreen() {
   const { signOut } = useClerk();
+  const router = useRouter();
   const { user, profile } = useUserDoc();
   const [tracked, setTracked] = useState<TrackedArtist[]>([]);
+  const [playlists, setPlaylists] = useState<SavedPlaylist[]>([]);
+  const [expandedPlaylist, setExpandedPlaylist] = useState<string | null>(null);
   const [stats, setStats] = useState({
     investments: 0,
     trades: 0,
@@ -36,10 +41,11 @@ export default function ProfileScreen() {
       return;
     }
     try {
-      const [trackedList, investments, txs] = await Promise.all([
+      const [trackedList, investments, txs, saved] = await Promise.all([
         getTrackedArtists(user.id),
         getInvestments(user.id),
         getTransactions(user.id),
+        getSavedPlaylists(user.id),
       ]);
 
       const portfolioValue = investments.reduce((sum, inv) => {
@@ -53,6 +59,7 @@ export default function ProfileScreen() {
       const simpleProfit = Math.round((portfolioValue - costBasis) * 100) / 100;
 
       setTracked(trackedList.slice(0, 10));
+      setPlaylists(saved);
       setStats({
         investments: investments.length,
         trades: txs.length,
@@ -72,6 +79,21 @@ export default function ProfileScreen() {
       load();
     }, [load])
   );
+
+  const handleDeletePlaylist = (pl: SavedPlaylist) => {
+    if (!user?.id) return;
+    Alert.alert('Delete playlist', `Remove "${pl.title}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteSavedPlaylist(user.id, pl.id);
+          setPlaylists((prev) => prev.filter((p) => p.id !== pl.id));
+        },
+      },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -110,11 +132,68 @@ export default function ProfileScreen() {
                 value={`${stats.profit >= 0 ? '+' : ''}${stats.profit}`}
               />
               <StatRow label="Artists tracked" value={`${stats.tracked}`} />
+              <StatRow label="Saved playlists" value={`${playlists.length}`} />
             </>
           )}
         </View>
 
         <Text style={[styles.sectionTitle, { marginTop: 8, marginBottom: 10 }]}>
+          Saved Playlists
+        </Text>
+        {playlists.length === 0 ? (
+          <Text style={styles.empty}>
+            Generate a playlist and tap Save to Profile to keep it here.
+          </Text>
+        ) : (
+          playlists.map((pl) => {
+            const open = expandedPlaylist === pl.id;
+            return (
+              <View key={pl.id} style={styles.playlistCard}>
+                <TouchableOpacity
+                  onPress={() => setExpandedPlaylist(open ? null : pl.id)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.playlistTitle}>{pl.title}</Text>
+                  <Text style={styles.playlistMeta}>
+                    {pl.tracks.length} songs · {pl.source === 'groq' ? 'AI' : 'Catalog'} ·{' '}
+                    {pl.genres.slice(0, 2).join(', ')}
+                  </Text>
+                </TouchableOpacity>
+
+                {open
+                  ? pl.tracks.map((t, i) => (
+                      <TouchableOpacity
+                        key={`${pl.id}-${t.id}-${i}`}
+                        style={styles.trackRow}
+                        onPress={() => router.push(`/artist/${t.artistId}` as any)}
+                      >
+                        <Text style={styles.trackIndex}>{i + 1}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.trackName} numberOfLines={1}>
+                            {t.name}
+                          </Text>
+                          <Text style={styles.trackArtist} numberOfLines={1}>
+                            {t.artistName}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    ))
+                  : null}
+
+                <View style={styles.playlistActions}>
+                  <TouchableOpacity onPress={() => setExpandedPlaylist(open ? null : pl.id)}>
+                    <Text style={styles.link}>{open ? 'Hide songs' : 'Show songs'}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleDeletePlaylist(pl)}>
+                    <Text style={styles.delete}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            );
+          })
+        )}
+
+        <Text style={[styles.sectionTitle, { marginTop: 16, marginBottom: 10 }]}>
           Tracked Artists
         </Text>
         {tracked.length === 0 ? (
@@ -215,6 +294,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginBottom: 12,
   },
+  playlistCard: {
+    backgroundColor: '#1A1D2E',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#252A3A',
+  },
+  playlistTitle: { color: '#F5F5F5', fontWeight: '800', fontSize: 15 },
+  playlistMeta: { color: '#9CA3AF', fontSize: 11, marginTop: 4, marginBottom: 8 },
+  trackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#252A3A',
+  },
+  trackIndex: { width: 22, color: '#F59E0B', fontWeight: '800', fontSize: 12 },
+  trackName: { color: '#F5F5F5', fontWeight: '700', fontSize: 13 },
+  trackArtist: { color: '#9CA3AF', fontSize: 11, marginTop: 1 },
+  playlistActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+  },
+  link: { color: '#14B8A6', fontWeight: '700', fontSize: 12 },
+  delete: { color: '#FF6B6B', fontWeight: '700', fontSize: 12 },
   signOutBtn: {
     marginTop: 20,
     backgroundColor: 'rgba(255, 107, 107, 0.15)',
