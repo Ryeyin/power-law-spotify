@@ -1,3 +1,5 @@
+import { calculateInitialPrice } from './stockPrice';
+
 export interface DiscoveryBadgeInfo {
   category: 'underground' | 'rising_star';
   label: string;
@@ -13,12 +15,19 @@ export interface DiscoveryScoreResult {
   fanRatio: number;
   badge: DiscoveryBadgeInfo;
   initialPrice: number;
+  percentChange: number;
+  basePrice: number;
 }
 
 /**
- * Calculates Discovery Score (40 - 100).
+ * Calculates Discovery Score (40 - 100) and a varied market price.
  */
-export function calculateDiscoveryScore(listeners: number, playcount: number): DiscoveryScoreResult {
+export function calculateDiscoveryScore(
+  listeners: number,
+  playcount: number,
+  popularity: number = 40,
+  seed: number = 0
+): DiscoveryScoreResult {
   const safeListeners = Math.max(listeners || 10, 10);
   const safePlaycount = Math.max(playcount || 100, 100);
 
@@ -48,7 +57,13 @@ export function calculateDiscoveryScore(listeners: number, playcount: number): D
     };
   }
 
-  const initialPrice = Math.max(10, Math.min(150, Math.round(score * 0.9 + 10)));
+  const priced = calculateInitialPrice({
+    discoveryScore: score,
+    listeners: safeListeners,
+    playcount: safePlaycount,
+    popularity,
+    seed: seed || Math.round(safeListeners + safePlaycount + score * 17),
+  });
 
   return {
     score,
@@ -57,6 +72,8 @@ export function calculateDiscoveryScore(listeners: number, playcount: number): D
     fanScore: Math.round(fanScore * 100) / 100,
     fanRatio: Math.round(fanRatio * 10) / 10,
     badge,
-    initialPrice,
+    initialPrice: priced.price,
+    percentChange: priced.percentChange,
+    basePrice: priced.basePrice,
   };
 }

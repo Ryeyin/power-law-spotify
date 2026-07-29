@@ -4,8 +4,8 @@ const path = require('path');
 const csvPath = path.join(__dirname, '..', 'artists_deduped.csv');
 const outPath = path.join(__dirname, '..', 'constants', 'artistsData.json');
 
-const content = fs.readFileSync(csvPath, 'utf8');
-const lines = content.split(/\r?\n/);
+const MIN_PRICE = 8;
+const MAX_PRICE = 320;
 
 const images = [
   'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
@@ -20,11 +20,11 @@ const images = [
 
 function parseCsvRow(row) {
   if (!row.trim()) return null;
-  
+
   const parts = [];
   let current = '';
   let inQuotes = false;
-  
+
   for (let i = 0; i < row.length; i++) {
     const char = row[i];
     if (char === '"') {
@@ -43,12 +43,12 @@ function parseCsvRow(row) {
   const name = parts[0];
   const followers = parseFloat(parts[1]) || 0;
   const popularity = parseFloat(parts[2]) || 0;
-  
+
   let rawGenres = parts[3] || '[]';
   if (rawGenres.startsWith('"') && rawGenres.endsWith('"')) {
     rawGenres = rawGenres.slice(1, -1);
   }
-  
+
   let genres = [];
   try {
     const jsonStr = rawGenres.replace(/'/g, '"');
@@ -69,14 +69,43 @@ function hashCode(str) {
   return Math.abs(hash);
 }
 
+function seededUnit(seed) {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function seededRange(seed, min, max) {
+  return min + seededUnit(seed) * (max - min);
+}
+
+function clampPrice(price) {
+  return Math.max(MIN_PRICE, Math.min(MAX_PRICE, Math.round(price * 100) / 100));
+}
+
+/**
+ * Mirrors lib/stockPrice.ts:
+ * newPrice = oldPrice × (1 + listenerGrowth × 0.7) × (1 + random(-0.02, 0.02))
+ */
+function updateStockPrice(oldPrice, listenerGrowth, marketNoise) {
+  const next = oldPrice * (1 + listenerGrowth * 0.7) * (1 + marketNoise);
+  return clampPrice(next);
+}
+
+const content = fs.readFileSync(csvPath, 'utf8');
+const lines = content.split(/\r?\n/);
+
 const artists = [];
 for (let i = 1; i < lines.length; i++) {
   const item = parseCsvRow(lines[i]);
   if (!item || !item.name || item.name === 'artist_name') continue;
 
   const followers = Math.max(Math.round(item.followers), 10);
-  const listeners = Math.round(followers * 1.6);
-  const playcount = Math.round(listeners * 15);
+  const h = hashCode(item.name + i);
+
+  // Vary engagement so fan ratio isn't identical for every artist
+  const playsPerListener = seededRange(h + 3, 6, 48);
+  const listeners = Math.round(followers * seededRange(h + 7, 1.15, 2.4));
+  const playcount = Math.round(listeners * playsPerListener);
 
   const listenerScore = Math.min(Math.max(Math.log10(listeners) / 8.5, 0), 1);
   const playScore = Math.min(Math.max(Math.log10(playcount) / 10, 0), 1);
@@ -99,30 +128,42 @@ for (let i = 1; i < lines.length; i++) {
     bgLight = 'rgba(20, 184, 166, 0.15)';
   }
 
-  const h = hashCode(item.name + i);
-  // Continuous base price formula for varied pricing with decimal places
+  const popularity = Math.max(0, Math.min(100, item.popularity || 0));
   const fanRatio = playcount / Math.max(listeners, 1);
-  const basePriceVal = (score * 1.65) + (fanRatio * 0.35) + ((h % 97) * 0.13);
-  const basePrice = Math.max(12, Math.min(220, Math.round(basePriceVal * 10) / 10));
 
-  // Market Sentiment & Listener Growth Formula
-  // newPrice = oldPrice * (1 + listenerGrowth * 0.7) * (1 + random(-0.02, 0.02))
-  const listenerGrowth = Math.sin((h % 100) * 0.15) * 0.08; // -8% to +8%
-  const marketNoise = Math.cos((h % 100) * 0.23) * 0.04 - 0.005; // -4.5% to +3.5%
-  const growthMultiplier = (1 + listenerGrowth * 0.7) * (1 + marketNoise);
-  
-  const currentPrice = Math.max(8, Math.round(basePrice * growthMultiplier * 10) / 10);
+  // Continuous base price — discovery + demand + audience + engagement + fine noise
+  const discoveryComponent = score * 0.45;
+  const demandComponent = popularity * 1.25;
+  const sizeComponent = Math.log10(Math.max(listeners, 10)) * 6.2;
+  const engagementComponent = Math.min(fanRatio, 80) * 0.35;
+  const fineNoise =
+    seededRange(h, 0, 48) +
+    seededRange(h + 17, -10, 10) +
+    ((h % 9973) / 9973) * 22;
+
+  const basePrice = clampPrice(
+    5 + discoveryComponent + demandComponent + sizeComponent + engagementComponent + fineNoise
+  );
+
+  // Market sentiment: growth drives most of the move; ±2% noise keeps the market alive
+  const listenerGrowth = seededRange(h + 41, -0.12, 0.12);
+  const marketNoise = seededRange(h + 73, -0.02, 0.02);
+  const currentPrice = updateStockPrice(basePrice, listenerGrowth, marketNoise);
+
   let percentChange = Math.round(((currentPrice - basePrice) / basePrice) * 1000) / 10;
-  if (percentChange === 0) percentChange = 1.4;
+  if (percentChange === 0) {
+    percentChange = Math.round(seededRange(h + 99, -1.8, 2.4) * 10) / 10;
+  }
 
   const imgUrl = images[i % images.length];
 
   artists.push({
     id: 'artist-' + i,
     name: item.name,
+    followers,
     listeners,
     playcount,
-    popularity: Math.round(item.popularity),
+    popularity: Math.round(popularity),
     genres: item.genres.length > 0 ? item.genres : ['indie', 'alternative'],
     discoveryScore: score,
     badge: { category, label, color, bgLight },
@@ -133,8 +174,13 @@ for (let i = 1; i < lines.length; i++) {
   });
 }
 
-// Sort all artists by price descending (most expensive on top)!
+// Sort all artists by price descending (most expensive on top)
 artists.sort((a, b) => b.price - a.price);
 
 fs.writeFileSync(outPath, JSON.stringify(artists, null, 2), 'utf8');
-console.log(`Successfully generated and sorted ${artists.length} artists by price descending!`);
+
+const prices = artists.map((a) => a.price);
+const unique = new Set(prices);
+console.log(
+  `Generated ${artists.length} artists | unique prices: ${unique.size} | range: ${Math.min(...prices)}–${Math.max(...prices)} | sorted by price desc`
+);

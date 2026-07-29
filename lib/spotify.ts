@@ -17,6 +17,7 @@ export interface SpotifyArtist {
   discoveryScore?: number;
   badge?: any;
   price?: number;
+  percentChange?: number;
   external_urls?: { spotify: string };
 }
 
@@ -107,9 +108,20 @@ export async function searchArtists(query: string = '', categoryFilter: string =
           const data = await res.json();
           const items = data.artists?.items || [];
           if (items.length > 0) {
-            return items.map((art: any) => {
+            const mapped = items.map((art: any) => {
               const followers = art.followers?.total || 50000;
-              const discovery = calculateDiscoveryScore(followers, followers * 15);
+              const popularity = art.popularity || 50;
+              const seed = art.name
+                ? Math.abs(
+                    [...art.name].reduce((h: number, c: string) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0)
+                  )
+                : followers;
+              const discovery = calculateDiscoveryScore(
+                followers,
+                followers * (8 + (seed % 30)),
+                popularity,
+                seed
+              );
               return {
                 id: art.id,
                 name: art.name,
@@ -117,13 +129,17 @@ export async function searchArtists(query: string = '', categoryFilter: string =
                 imageUrl: art.images?.[0]?.url || 'https://picsum.photos/300',
                 genres: art.genres || [],
                 followers: { total: followers },
-                popularity: art.popularity || 50,
+                popularity,
                 discoveryScore: discovery.score,
                 badge: discovery.badge,
                 price: discovery.initialPrice,
+                percentChange: discovery.percentChange,
                 external_urls: art.external_urls,
               };
             });
+            // Sort by price descending (most expensive on top)
+            mapped.sort((a: SpotifyArtist, b: SpotifyArtist) => (b.price || 0) - (a.price || 0));
+            return mapped;
           }
         }
       } catch (err) {
@@ -186,6 +202,7 @@ export async function getArtist(artistId: string): Promise<SpotifyArtist | null>
       discoveryScore: local.discoveryScore,
       badge: local.badge,
       price: local.price,
+      percentChange: local.percentChange,
       external_urls: { spotify: 'https://open.spotify.com' },
     };
   }

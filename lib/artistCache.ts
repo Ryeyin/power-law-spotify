@@ -2,7 +2,17 @@ import { SpotifyArtist, getArtist, getArtistTopTracks } from './spotify';
 import { getLastFmArtistInfo } from './lastfm';
 import { calculateDiscoveryScore } from './discoveryScore';
 import { getCachedArtist, cacheArtist, CachedArtist } from './firestore';
+import { buildPriceHistory } from './stockPrice';
 import ALL_ARTISTS from '../constants/artistsData.json';
+
+function nameSeed(name: string): number {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash << 5) - hash + name.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
 
 /**
  * Get unified artist profile with cached metrics, local 2548 dataset, or live API fetch.
@@ -18,17 +28,9 @@ export async function getUnifiedArtistDetail(artistId: string, spotifyArtistPara
   const local = (ALL_ARTISTS as any[]).find(a => a.id === artistId || a.name.toLowerCase() === artistId.toLowerCase());
   
   if (local) {
-    const basePrice = local.price || 45;
-    const priceHistory = Array.from({ length: 7 }, (_, i) => {
-      const day = new Date();
-      day.setDate(day.getDate() - (6 - i));
-      const variation = Math.sin(i * 1.3) * 5 + ((i - 3) * 1.5);
-      const dayPrice = Math.max(5, Math.min(200, Math.round((basePrice + variation) * 10) / 10));
-      return {
-        date: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        price: dayPrice,
-      };
-    });
+    const currentPrice = local.price || 45;
+    const seed = nameSeed(local.name);
+    const priceHistory = buildPriceHistory(currentPrice, 7, seed);
 
     const lastFmInfo = await getLastFmArtistInfo(local.name);
 
@@ -42,7 +44,8 @@ export async function getUnifiedArtistDetail(artistId: string, spotifyArtistPara
       playcount: lastFmInfo.playcount || local.playcount,
       discoveryScore: local.discoveryScore,
       badge: local.badge,
-      price: basePrice,
+      price: currentPrice,
+      percentChange: local.percentChange,
       priceHistory,
       bio: lastFmInfo.bio || `${local.name} is a recording artist with ${local.followers.toLocaleString()} followers on Spotify.`,
       topTracks: [
@@ -66,25 +69,22 @@ export async function getUnifiedArtistDetail(artistId: string, spotifyArtistPara
   // 3. Fallback to live Spotify fetch if ID isn't in local dataset
   const spotifyData = spotifyArtistParam || (await getArtist(artistId));
   const artistName = spotifyData?.name || 'Unknown Artist';
+  const seed = nameSeed(artistName);
 
   const [lastFmInfo, topTracks] = await Promise.all([
     getLastFmArtistInfo(artistName),
     getArtistTopTracks(artistId),
   ]);
 
-  const discovery = calculateDiscoveryScore(lastFmInfo.listeners, lastFmInfo.playcount);
+  const discovery = calculateDiscoveryScore(
+    lastFmInfo.listeners,
+    lastFmInfo.playcount,
+    spotifyData?.popularity ?? 40,
+    seed
+  );
 
-  const basePrice = discovery.initialPrice;
-  const priceHistory = Array.from({ length: 7 }, (_, i) => {
-    const day = new Date();
-    day.setDate(day.getDate() - (6 - i));
-    const variation = Math.sin(i * 1.5) * 4 + ((i - 3) * 1.2);
-    const dayPrice = Math.max(5, Math.min(150, Math.round((basePrice + variation) * 10) / 10));
-    return {
-      date: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      price: dayPrice,
-    };
-  });
+  const currentPrice = discovery.initialPrice;
+  const priceHistory = buildPriceHistory(currentPrice, 7, seed);
 
   const fullArtist: CachedArtist = {
     id: artistId,
@@ -96,7 +96,8 @@ export async function getUnifiedArtistDetail(artistId: string, spotifyArtistPara
     playcount: lastFmInfo.playcount,
     discoveryScore: discovery.score,
     badge: discovery.badge,
-    price: basePrice,
+    price: currentPrice,
+    percentChange: discovery.percentChange,
     priceHistory,
     bio: lastFmInfo.bio,
     topTracks: topTracks.map(t => ({

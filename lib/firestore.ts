@@ -33,6 +33,7 @@ export interface CachedArtist {
   discoveryScore: number;
   badge: DiscoveryBadgeInfo;
   price: number;
+  percentChange?: number;
 
   priceHistory: { date: string; price: number }[];
   bio?: string;

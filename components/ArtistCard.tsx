@@ -14,6 +14,7 @@ interface Props {
     listeners?: number;
     playcount?: number;
     price?: number;
+    percentChange?: number;
     discoveryScore?: number;
     badge?: any;
   };
@@ -28,6 +29,8 @@ export const ArtistCard: React.FC<Props> = ({ artist }) => {
   const badge = artist.badge || discovery.badge;
   const score = artist.discoveryScore || discovery.score;
   const price = artist.price || discovery.initialPrice;
+  const percentChange = artist.percentChange ?? discovery.percentChange ?? 0;
+  const isUp = percentChange >= 0;
 
   return (
     <TouchableOpacity
@@ -51,7 +54,12 @@ export const ArtistCard: React.FC<Props> = ({ artist }) => {
 
         <View style={styles.bottomRow}>
           <Text style={styles.priceLabel}>Price</Text>
-          <Text style={styles.priceValue}>🪙 {price}</Text>
+          <View style={styles.priceBlock}>
+            <Text style={[styles.change, isUp ? styles.changeUp : styles.changeDown]}>
+              {isUp ? '▲' : '▼'} {Math.abs(percentChange).toFixed(1)}%
+            </Text>
+            <Text style={styles.priceValue}>🪙 {price}</Text>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -107,6 +115,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#9CA3AF',
     textTransform: 'uppercase',
+  },
+  priceBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  change: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  changeUp: {
+    color: '#34D399',
+  },
+  changeDown: {
+    color: '#F87171',
   },
   priceValue: {
     fontSize: 14,

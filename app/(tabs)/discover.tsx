@@ -59,7 +59,7 @@ export default function DiscoverScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Discover Artists</Text>
         <Text style={styles.subtitle}>
-          Showing {allResults.length > 0 ? `${Math.min(visibleCount, allResults.length)} of ${allResults.length.toLocaleString()}` : 0} artists
+          Sorted by price · {allResults.length > 0 ? `${Math.min(visibleCount, allResults.length)} of ${allResults.length.toLocaleString()}` : 0} artists
         </Text>
       </View>
 

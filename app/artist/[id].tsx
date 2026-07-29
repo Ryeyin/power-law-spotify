@@ -111,7 +111,11 @@ export default function ArtistDetailScreen() {
           <StatCard
             label="Share Price"
             value={`🪙 ${artist.price}`}
-            subValue="Coins / Share"
+            subValue={
+              typeof artist.percentChange === 'number'
+                ? `${artist.percentChange >= 0 ? '+' : ''}${artist.percentChange}% today`
+                : 'Coins / Share'
+            }
             accentColor="#F59E0B"
           />
           <StatCard
