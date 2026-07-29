@@ -49,6 +49,8 @@ All UI will use this palette instead of the spec's green/purple/blue:
 
 ## Staged Implementation Roadmap
 
+> **Progress (as of current codebase):** Stages **1–11 complete**. Stages 12–13 (background price cron + polish) remain optional.
+
 ### Stage 1 — Project Scaffolding & Navigation Shell
 
 **What you're building:** The empty app skeleton with all screens stubbed out, navigation working, and the design system in place.

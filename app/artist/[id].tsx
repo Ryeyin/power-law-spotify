@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -17,17 +17,22 @@ import { DiscoveryBadge } from '../../components/DiscoveryBadge';
 import { StatCard } from '../../components/StatCard';
 import { PriceChart } from '../../components/PriceChart';
 import { SimilarArtists } from '../../components/SimilarArtists';
+import { TopTracksList } from '../../components/TopTracksList';
+import { BuyModal } from '../../components/BuyModal';
 import { useUserDoc } from '../../hooks/useUserDoc';
+import { buyShares } from '../../lib/investments';
+import { trackArtist, untrackArtist, isArtistTracked } from '../../lib/trackedArtists';
 
 export default function ArtistDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { profile } = useUserDoc();
+  const { user, profile, updateCoinsLocally } = useUserDoc();
   
   const [artist, setArtist] = useState<CachedArtist | null>(null);
   const [loading, setLoading] = useState(true);
   const [isTracked, setIsTracked] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
+  const [buyOpen, setBuyOpen] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -36,6 +41,9 @@ export default function ArtistDetailScreen() {
         setLoading(true);
         const data = await getUnifiedArtistDetail(id);
         setArtist(data);
+        if (user?.id) {
+          setIsTracked(await isArtistTracked(user.id, data.id));
+        }
       } catch (err) {
         console.error('Error loading artist detail:', err);
       } finally {
@@ -43,19 +51,49 @@ export default function ArtistDetailScreen() {
       }
     }
     loadData();
-  }, [id]);
+  }, [id, user?.id]);
 
-  const handleBuy = () => {
-    Alert.alert(
-      'Buy Shares',
-      `Current Price: 🪙 ${artist?.price} Coins\nYour Balance: 🪙 ${profile?.coins || 1000} Coins\n\nStock market buying will be active in Stage 7!`,
-      [{ text: 'OK' }]
-    );
-  };
+  const handleBuyConfirm = useCallback(
+    async (shares: number) => {
+      if (!user?.id || !artist || !profile) throw new Error('Not signed in');
+      const result = await buyShares(
+        user.id,
+        {
+          id: artist.id,
+          name: artist.name,
+          imageUrl: artist.imageUrl,
+          price: artist.price,
+        },
+        shares,
+        profile.coins
+      );
+      updateCoinsLocally(result.newCoins);
+      Alert.alert('Purchase complete', `Bought ${shares} share(s) of ${artist.name} for 🪙 ${result.totalCost}`);
+    },
+    [user?.id, artist, profile, updateCoinsLocally]
+  );
 
-  const toggleTrack = () => {
-    setIsTracked(prev => !prev);
-    Alert.alert('Artist Tracking', isTracked ? `Unfollowed ${artist?.name}` : `Now tracking ${artist?.name}`);
+  const toggleTrack = async () => {
+    if (!user?.id || !artist) return;
+    try {
+      if (isTracked) {
+        await untrackArtist(user.id, artist.id);
+        setIsTracked(false);
+      } else {
+        await trackArtist(user.id, {
+          id: artist.id,
+          name: artist.name,
+          imageUrl: artist.imageUrl,
+          discoveryScore: artist.discoveryScore,
+          price: artist.price,
+          percentChange: artist.percentChange,
+          badgeLabel: artist.badge?.label,
+        });
+        setIsTracked(true);
+      }
+    } catch (e) {
+      console.warn(e);
+    }
   };
 
   if (loading) {
@@ -79,11 +117,14 @@ export default function ArtistDetailScreen() {
   }
 
   const fanRatio = artist.listeners > 0 ? (artist.playcount / artist.listeners).toFixed(1) : '0';
+  const playValue =
+    artist.playcount > 1000000
+      ? `${(artist.playcount / 1000000).toFixed(1)}M`
+      : `${(artist.playcount / 1000).toFixed(0)}k`;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Header Bar */}
         <View style={styles.navBar}>
           <TouchableOpacity style={styles.iconBtn} onPress={() => router.back()}>
             <Text style={styles.iconBtnText}>←</Text>
@@ -94,7 +135,6 @@ export default function ArtistDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Hero Section */}
         <View style={styles.heroContainer}>
           <Image source={{ uri: artist.imageUrl }} style={styles.heroImage} />
           <View style={styles.heroOverlay}>
@@ -106,7 +146,6 @@ export default function ArtistDetailScreen() {
           </View>
         </View>
 
-        {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <StatCard
             label="Share Price"
@@ -130,17 +169,19 @@ export default function ArtistDetailScreen() {
             accentColor="#14B8A6"
           />
           <StatCard
-            label="Fan Loyalty Ratio"
-            value={`${fanRatio}x`}
-            subValue="Plays per listener"
+            label="Total Plays"
+            value={playValue}
+            subValue={`${fanRatio}x fan ratio`}
             accentColor="#FF6B6B"
           />
         </View>
 
-        {/* Price History Chart */}
         <PriceChart history={artist.priceHistory || []} currentPrice={artist.price} />
 
-        {/* Expandable Biography */}
+        {artist.topTracks && artist.topTracks.length > 0 ? (
+          <TopTracksList tracks={artist.topTracks} />
+        ) : null}
+
         {artist.bio ? (
           <View style={styles.bioCard}>
             <Text style={styles.sectionTitle}>Biography</Text>
@@ -153,7 +194,6 @@ export default function ArtistDetailScreen() {
           </View>
         ) : null}
 
-        {/* Similar Artists */}
         {artist.similarArtists && artist.similarArtists.length > 0 && (
           <SimilarArtists 
             artists={artist.similarArtists} 
@@ -162,17 +202,25 @@ export default function ArtistDetailScreen() {
         )}
       </ScrollView>
 
-      {/* Sticky Purchase Footer */}
       <View style={styles.footer}>
         <View style={styles.footerInfo}>
           <Text style={styles.footerLabel}>Market Price</Text>
           <Text style={styles.footerPrice}>🪙 {artist.price} <Text style={styles.footerSub}>/ share</Text></Text>
         </View>
 
-        <TouchableOpacity style={styles.buyButton} activeOpacity={0.8} onPress={handleBuy}>
+        <TouchableOpacity style={styles.buyButton} activeOpacity={0.8} onPress={() => setBuyOpen(true)}>
           <Text style={styles.buyButtonText}>Buy Shares</Text>
         </TouchableOpacity>
       </View>
+
+      <BuyModal
+        visible={buyOpen}
+        artistName={artist.name}
+        price={artist.price}
+        coins={profile?.coins || 0}
+        onClose={() => setBuyOpen(false)}
+        onConfirm={handleBuyConfirm}
+      />
     </SafeAreaView>
   );
 }

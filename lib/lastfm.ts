@@ -76,3 +76,36 @@ function getFallbackLastFmInfo(artistName: string): LastFmArtistInfo {
     ],
   };
 }
+
+/**
+ * Fetch top tracks for an artist from Last.fm (real song titles).
+ */
+export async function getLastFmTopTracks(
+  artistName: string,
+  limit: number = 5
+): Promise<{ name: string; playcount: number; durationMs: number }[]> {
+  if (!LASTFM_API_KEY) return [];
+
+  try {
+    const url =
+      `https://ws.audioscrobbler.com/2.0/?method=artist.gettoptracks` +
+      `&artist=${encodeURIComponent(artistName)}` +
+      `&api_key=${LASTFM_API_KEY}&format=json&limit=${limit}`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    const tracks = data.toptracks?.track;
+    if (!tracks) return [];
+    const list = Array.isArray(tracks) ? tracks : [tracks];
+    return list
+      .map((t: any) => ({
+        name: String(t.name || '').trim(),
+        playcount: parseInt(t.playcount || '0', 10),
+        durationMs: (parseInt(t.duration || '0', 10) || 210) * 1000,
+      }))
+      .filter((t: { name: string }) => t.name.length > 0);
+  } catch (e) {
+    console.warn(`Last.fm top tracks failed for ${artistName}:`, e);
+    return [];
+  }
+}

@@ -16,6 +16,7 @@ export interface UserProfile {
   email: string;
   name?: string;
   coins: number;
+  lastRewardTimestamp?: number;
   createdAt: any;
   updatedAt?: any;
 }
