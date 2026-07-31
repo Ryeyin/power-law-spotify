@@ -148,7 +148,7 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1119',
+    backgroundColor: '#F7F8FC',
   },
   header: {
     paddingHorizontal: 16,
@@ -158,32 +158,32 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#F5F5F5',
+    color: '#1F2937',
   },
   subtitle: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginTop: 2,
   },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     marginHorizontal: 16,
     marginVertical: 10,
     paddingHorizontal: 14,
     height: 48,
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
   searchInput: {
     flex: 1,
-    color: '#F5F5F5',
+    color: '#1F2937',
     fontSize: 14,
   },
   clearIcon: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 16,
     paddingHorizontal: 4,
   },
@@ -192,24 +192,24 @@ const styles = StyleSheet.create({
     maxHeight: 36,
   },
   chip: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
   selectedChip: {
-    backgroundColor: '#F59E0B',
-    borderColor: '#F59E0B',
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF6B6B',
   },
   chipText: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 12,
     fontWeight: '600',
   },
   selectedChipText: {
-    color: '#0F1119',
+    color: '#FFFFFF',
     fontWeight: '800',
   },
   listContent: {
@@ -223,17 +223,17 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   loadingText: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 13,
     marginTop: 10,
   },
   emptyText: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 14,
   },
   loadMoreBtn: {
-    backgroundColor: '#1A1D2E',
-    borderColor: '#F59E0B',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FF6B6B',
     borderWidth: 1,
     borderRadius: 14,
     paddingVertical: 14,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   loadMoreText: {
-    color: '#F59E0B',
+    color: '#FF6B6B',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   endOfListText: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 12,
     fontStyle: 'italic',
   },

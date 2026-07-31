@@ -24,13 +24,13 @@ export const StatCard: React.FC<Props> = ({ label, value, subValue, icon, accent
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 12,
     flex: 1,
     minWidth: '45%',
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
   header: {
     flexDirection: 'row',
@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: '#6B7280',
     textTransform: 'uppercase',
     fontWeight: '600',
     letterSpacing: 0.5,
@@ -55,6 +55,6 @@ const styles = StyleSheet.create({
   },
   subValue: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
 });

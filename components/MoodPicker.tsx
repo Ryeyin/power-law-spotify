@@ -37,15 +37,15 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
   card: {
     width: '47%',
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     paddingVertical: 18,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
   cardActive: { borderColor: '#14B8A6', backgroundColor: 'rgba(20,184,166,0.12)' },
   emoji: { fontSize: 22, marginBottom: 6 },
-  label: { color: '#9CA3AF', fontWeight: '700', fontSize: 13 },
+  label: { color: '#6B7280', fontWeight: '700', fontSize: 13 },
   labelActive: { color: '#14B8A6' },
 });

@@ -1,4 +1,4 @@
-import { calculateInitialPrice } from './stockPrice';
+import { buildPriceHistory, calculateInitialPrice, derivePercentChangeFromHistory } from './stockPrice';
 
 export interface DiscoveryBadgeInfo {
   category: 'underground' | 'rising_star';
@@ -65,6 +65,8 @@ export function calculateDiscoveryScore(
     seed: seed || Math.round(safeListeners + safePlaycount + score * 17),
   });
 
+  const priceHistory = buildPriceHistory(priced.price, 7, seed || Math.round(safeListeners + safePlaycount + score * 17));
+
   return {
     score,
     listenerScore: Math.round(listenerScore * 100) / 100,
@@ -73,7 +75,7 @@ export function calculateDiscoveryScore(
     fanRatio: Math.round(fanRatio * 10) / 10,
     badge,
     initialPrice: priced.price,
-    percentChange: priced.percentChange,
+    percentChange: derivePercentChangeFromHistory(priceHistory, priced.price),
     basePrice: priced.basePrice,
   };
 }

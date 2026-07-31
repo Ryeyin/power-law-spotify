@@ -3,6 +3,7 @@ import { getLastFmArtistInfo } from './lastfm';
 import { calculateDiscoveryScore } from './discoveryScore';
 import { getCachedArtist, cacheArtist, CachedArtist } from './firestore';
 import { buildPriceHistory } from './stockPrice';
+import { refreshArtistMarketData } from './artistPrices';
 import ALL_ARTISTS from '../constants/artistsData.json';
 
 function nameSeed(name: string): number {
@@ -14,45 +15,77 @@ function nameSeed(name: string): number {
   return Math.abs(hash);
 }
 
+async function enrichWithTopTracks(artist: CachedArtist): Promise<CachedArtist> {
+  const topTracks = await getArtistTopTracks(artist.id, artist.name);
+  if (topTracks.length === 0) return artist;
+  return {
+    ...artist,
+    topTracks: topTracks.map((t) => ({
+      id: t.id,
+      name: t.name,
+      previewUrl: t.preview_url || undefined,
+      durationMs: t.duration_ms,
+    })),
+  };
+}
+
 /**
- * Get unified artist profile with cached metrics, local 2548 dataset, or live API fetch.
+ * Get unified artist profile with live daily price ticks applied when stale.
  */
-export async function getUnifiedArtistDetail(artistId: string, spotifyArtistParam?: SpotifyArtist): Promise<CachedArtist> {
-  // 1. Check Firestore cache first
-  const existing = await getCachedArtist(artistId);
-  if (existing && Date.now() - (existing.lastUpdated || 0) < 3600 * 1000) {
-    return existing;
-  }
+export async function getUnifiedArtistDetail(
+  artistId: string,
+  spotifyArtistParam?: SpotifyArtist
+): Promise<CachedArtist> {
+  const local = (ALL_ARTISTS as any[]).find(
+    (a) => a.id === artistId || a.name.toLowerCase() === artistId.toLowerCase()
+  );
 
-  // 2. Check local dataset of 2,548 artists
-  const local = (ALL_ARTISTS as any[]).find(a => a.id === artistId || a.name.toLowerCase() === artistId.toLowerCase());
-  
-  if (local) {
-    const currentPrice = local.price || 45;
-    const seed = nameSeed(local.name);
-    const priceHistory = buildPriceHistory(currentPrice, 7, seed);
+  // Ensure market price is current (applies daily ticks if 24h+ elapsed)
+  const refreshedArtist = await refreshArtistMarketData(artistId, local?.name);
+  const cached =
+    (await getCachedArtist(artistId)) ||
+    (local
+      ? ({
+          id: local.id,
+          name: local.name,
+          imageUrl: local.imageUrl,
+          genres: local.genres || ['indie', 'alternative'],
+          followers: local.followers,
+          listeners: local.listeners,
+          playcount: local.playcount,
+          discoveryScore: refreshedArtist?.discoveryScore ?? local.discoveryScore,
+          badge: refreshedArtist?.badge ?? local.badge,
+          price: refreshedArtist?.price ?? local.price,
+          percentChange: refreshedArtist?.percentChange ?? local.percentChange,
+          priceHistory: buildPriceHistory(refreshedArtist?.price ?? local.price, 7, nameSeed(local.name)),
+          lastUpdated: Date.now(),
+          lastPriceUpdate: refreshedArtist?.lastPriceUpdate ?? Date.now(),
+          lastMetricsRefresh: refreshedArtist?.lastMetricsRefresh ?? Date.now(),
+        } as CachedArtist)
+      : null);
 
+  if (local && cached) {
     const lastFmInfo = await getLastFmArtistInfo(local.name);
-
-    const fullArtist: CachedArtist = {
+    let fullArtist: CachedArtist = {
+      ...cached,
       id: local.id,
       name: local.name,
       imageUrl: local.imageUrl,
       genres: local.genres || ['indie', 'alternative'],
       followers: local.followers,
-      listeners: lastFmInfo.listeners || local.listeners,
-      playcount: lastFmInfo.playcount || local.playcount,
+      listeners: lastFmInfo.listeners || cached.listeners,
+      playcount: lastFmInfo.playcount || cached.playcount,
       discoveryScore: local.discoveryScore,
       badge: local.badge,
-      price: currentPrice,
-      percentChange: local.percentChange,
-      priceHistory,
-      bio: lastFmInfo.bio || `${local.name} is a recording artist with ${local.followers.toLocaleString()} followers on Spotify.`,
-      topTracks: [
-        { id: 't1', name: `${local.name} - Greatest Hit`, durationMs: 215000 },
-        { id: 't2', name: `${local.name} - Live Performance`, durationMs: 198000 },
-        { id: 't3', name: `${local.name} - Acoustic Session`, durationMs: 232000 },
-      ],
+      price: cached.price,
+      percentChange: cached.percentChange,
+      priceHistory: cached.priceHistory?.length
+        ? cached.priceHistory
+        : buildPriceHistory(cached.price, 7, nameSeed(local.name)),
+      bio:
+        lastFmInfo.bio ||
+        `${local.name} is a recording artist with ${local.followers.toLocaleString()} followers on Spotify.`,
+      topTracks: cached.topTracks || [],
       similarArtists: (lastFmInfo.similar || []).slice(0, 5).map((s, idx) => ({
         id: `sim-${idx}`,
         name: s.name,
@@ -61,19 +94,20 @@ export async function getUnifiedArtistDetail(artistId: string, spotifyArtistPara
       lastUpdated: Date.now(),
     };
 
-    // Cache asynchronously
+    fullArtist = await enrichWithTopTracks(fullArtist);
     cacheArtist(fullArtist).catch(() => {});
     return fullArtist;
   }
 
-  // 3. Fallback to live Spotify fetch if ID isn't in local dataset
+  // Live Spotify artist not in local catalog
   const spotifyData = spotifyArtistParam || (await getArtist(artistId));
   const artistName = spotifyData?.name || 'Unknown Artist';
   const seed = nameSeed(artistName);
 
-  const [lastFmInfo, topTracks] = await Promise.all([
+  const [lastFmInfo, topTracks, refreshed] = await Promise.all([
     getLastFmArtistInfo(artistName),
-    getArtistTopTracks(artistId),
+    getArtistTopTracks(artistId, artistName),
+    refreshArtistMarketData(artistId, artistName),
   ]);
 
   const discovery = calculateDiscoveryScore(
@@ -83,24 +117,27 @@ export async function getUnifiedArtistDetail(artistId: string, spotifyArtistPara
     seed
   );
 
-  const currentPrice = discovery.initialPrice;
-  const priceHistory = buildPriceHistory(currentPrice, 7, seed);
+  const currentPrice = refreshed?.price ?? discovery.initialPrice;
 
   const fullArtist: CachedArtist = {
     id: artistId,
     name: artistName,
-    imageUrl: spotifyData?.imageUrl || spotifyData?.images?.[0]?.url || 'https://picsum.photos/300',
+    imageUrl: spotifyData?.imageUrl || spotifyData?.images?.[0]?.url || local?.imageUrl,
     genres: spotifyData?.genres || ['indie', 'alternative'],
     followers: spotifyData?.followers?.total || lastFmInfo.listeners,
     listeners: lastFmInfo.listeners,
     playcount: lastFmInfo.playcount,
-    discoveryScore: discovery.score,
-    badge: discovery.badge,
+    discoveryScore: refreshed?.discoveryScore ?? discovery.score,
+    badge: refreshed?.badge ?? discovery.badge,
     price: currentPrice,
-    percentChange: discovery.percentChange,
-    priceHistory,
+    percentChange: refreshed?.percentChange ?? discovery.percentChange,
+    priceHistory: buildPriceHistory(currentPrice, 7, seed),
+    previousListeners: lastFmInfo.listeners,
+    previousPlaycount: lastFmInfo.playcount,
+    lastPriceUpdate: refreshed?.lastPriceUpdate ?? Date.now(),
+    lastMetricsRefresh: refreshed?.lastMetricsRefresh ?? Date.now(),
     bio: lastFmInfo.bio,
-    topTracks: topTracks.map(t => ({
+    topTracks: topTracks.map((t) => ({
       id: t.id,
       name: t.name,
       previewUrl: t.preview_url || undefined,

@@ -40,6 +40,13 @@ export interface CachedArtist {
   bio?: string;
   topTracks?: { id: string; name: string; previewUrl?: string; durationMs: number }[];
   similarArtists?: { id: string; name: string; imageUrl?: string }[];
+  /** Snapshot used to compute listener growth on the next tick */
+  previousListeners?: number;
+  previousPlaycount?: number;
+  /** Timestamp of the last daily price tick */
+  lastPriceUpdate?: number;
+  /** Timestamp of the last live API refresh for discovery/price metrics */
+  lastMetricsRefresh?: number;
   lastUpdated: number;
 }
 

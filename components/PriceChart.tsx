@@ -45,9 +45,9 @@ export const PriceChart: React.FC<Props> = ({ history, currentPrice }) => {
         width={screenWidth}
         height={180}
         chartConfig={{
-          backgroundColor: '#1A1D2E',
-          backgroundGradientFrom: '#1A1D2E',
-          backgroundGradientTo: '#1A1D2E',
+          backgroundColor: '#FFFFFF',
+          backgroundGradientFrom: '#FFFFFF',
+          backgroundGradientTo: '#FFFFFF',
           decimalPlaces: 1,
           color: (opacity = 1) => isPositive ? `rgba(20, 184, 166, ${opacity})` : `rgba(255, 107, 107, ${opacity})`,
           labelColor: (opacity = 1) => `rgba(156, 163, 175, ${opacity})`,
@@ -69,12 +69,12 @@ export const PriceChart: React.FC<Props> = ({ history, currentPrice }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
     marginVertical: 12,
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
   header: {
     flexDirection: 'row',
@@ -84,14 +84,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
     textTransform: 'uppercase',
     fontWeight: '600',
   },
   currentPrice: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F55',
+    color: '#FF6B6B',
   },
   badge: {
     paddingHorizontal: 10,

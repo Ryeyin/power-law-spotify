@@ -26,6 +26,16 @@ export function percentChangeFrom(oldPrice: number, newPrice: number): number {
   return Math.round(((newPrice - oldPrice) / oldPrice) * 1000) / 10;
 }
 
+export function derivePercentChangeFromHistory(
+  history: Array<{ price: number }> | undefined,
+  currentPrice: number
+): number {
+  if (!history?.length) return 0;
+  const firstPrice = history[0]?.price;
+  if (!firstPrice || firstPrice <= 0) return 0;
+  return percentChangeFrom(firstPrice, currentPrice);
+}
+
 /**
  * Market sentiment update (Stage 7 formula):
  * newPrice = oldPrice × (1 + listenerGrowth × 0.7) × (1 + random(-0.02, 0.02))

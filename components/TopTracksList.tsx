@@ -41,17 +41,17 @@ export const TopTracksList: React.FC<Props> = ({ tracks }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
     marginVertical: 8,
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#F5F5F5',
+    color: '#1F2937',
     marginBottom: 12,
   },
   trackRow: {
@@ -59,12 +59,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#252A3A',
+    borderBottomColor: '#E5E7EB',
   },
   index: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#F59E0B',
+    color: '#FF6B6B',
     width: 24,
   },
   trackInfo: {
@@ -74,10 +74,10 @@ const styles = StyleSheet.create({
   trackName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F5F5F5',
+    color: '#1F2937',
   },
   duration: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
 });

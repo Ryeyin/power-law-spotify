@@ -12,7 +12,7 @@ import {
 import { useFocusEffect } from 'expo-router';
 import { useUserDoc } from '../../hooks/useUserDoc';
 import { getInvestments, sellShares, Investment } from '../../lib/investments';
-import { lookupArtistPrice } from '../../lib/artistLookup';
+import { refreshArtistPrices, getCachedLivePrice } from '../../lib/artistPrices';
 import { PortfolioSummary } from '../../components/PortfolioSummary';
 import { InvestmentCard } from '../../components/InvestmentCard';
 import { SellModal } from '../../components/SellModal';
@@ -23,6 +23,7 @@ export default function PortfolioScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selling, setSelling] = useState<Investment | null>(null);
+  const [priceRefreshTick, setPriceRefreshTick] = useState(0);
 
   const load = useCallback(async () => {
     if (!user?.id) {
@@ -33,6 +34,12 @@ export default function PortfolioScreen() {
     try {
       const data = await getInvestments(user.id);
       setInvestments(data);
+      if (data.length > 0) {
+        await refreshArtistPrices(
+          data.map((inv) => ({ artistId: inv.artistId, artistName: inv.artistName }))
+        );
+        setPriceRefreshTick((tick) => tick + 1);
+      }
     } catch (e) {
       console.warn(e);
     } finally {
@@ -49,7 +56,7 @@ export default function PortfolioScreen() {
   );
 
   const priceFor = (inv: Investment) =>
-    lookupArtistPrice(inv.artistId) ?? inv.purchasePrice;
+    getCachedLivePrice(inv.artistId)?.price ?? inv.purchasePrice;
 
   const portfolioValue = investments.reduce(
     (sum, inv) => sum + priceFor(inv) * inv.shares,
@@ -149,7 +156,7 @@ export default function PortfolioScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1119',
+    backgroundColor: '#F7F8FC',
   },
   header: {
     paddingHorizontal: 16,
@@ -158,11 +165,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#F5F5F5',
+    color: '#1F2937',
   },
   subtitle: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginTop: 2,
   },
   list: {
@@ -174,12 +181,12 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
   },
   emptyTitle: {
-    color: '#F5F5F5',
+    color: '#1F2937',
     fontWeight: '800',
     fontSize: 16,
   },
   emptyText: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 13,
     marginTop: 6,
     textAlign: 'center',

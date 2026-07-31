@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#F5F5F5',
+    color: '#1F2937',
     marginBottom: 12,
     paddingHorizontal: 4,
   },
@@ -54,25 +54,25 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   card: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 10,
     alignItems: 'center',
     width: 100,
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
   avatar: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#252A3A',
+    backgroundColor: '#F3F5F9',
     marginBottom: 8,
   },
   name: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#F5F5F5',
+    color: '#1F2937',
     textAlign: 'center',
   },
 });

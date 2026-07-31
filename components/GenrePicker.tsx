@@ -53,17 +53,17 @@ export const GenrePicker: React.FC<Props> = ({ selected, onChange }) => {
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 8 },
-  hint: { fontSize: 12, color: '#9CA3AF', marginBottom: 10 },
+  hint: { fontSize: 12, color: '#6B7280', marginBottom: 10 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
   },
-  chipActive: { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
-  chipText: { color: '#9CA3AF', fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
-  chipTextActive: { color: '#0F1119', fontWeight: '800' },
+  chipActive: { backgroundColor: '#FF6B6B', borderColor: '#FF6B6B' },
+  chipText: { color: '#6B7280', fontSize: 12, fontWeight: '600', textTransform: 'capitalize' },
+  chipTextActive: { color: '#FFFFFF', fontWeight: '800' },
 });

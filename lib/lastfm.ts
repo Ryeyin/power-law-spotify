@@ -1,3 +1,5 @@
+import ALL_ARTISTS from '../constants/artistsData.json';
+
 const LASTFM_API_KEY = process.env.EXPO_PUBLIC_LASTFM_API_KEY || '';
 
 export interface LastFmArtistInfo {
@@ -54,26 +56,30 @@ export async function getLastFmArtistInfo(artistName: string): Promise<LastFmArt
  * Smart fallback generator based on artist name hashing or defaults.
  */
 function getFallbackLastFmInfo(artistName: string): LastFmArtistInfo {
-  // Deterministic random generator based on name length
-  const hash = artistName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  
-  // Create varied underground vs mainstream distributions for demonstration
-  const isIndie = hash % 2 === 0;
-  const listeners = isIndie ? 25000 + (hash * 137) % 150000 : 850000 + (hash * 423) % 4000000;
-  const playcount = listeners * (12 + (hash % 18)); // Fan ratio between 12 and 30 plays per listener
+  const local = (ALL_ARTISTS as any[]).find((artist) => {
+    const normalizedName = artist.name?.toLowerCase() || '';
+    const normalizedQuery = artistName.toLowerCase();
+    return normalizedName === normalizedQuery || normalizedName.includes(normalizedQuery) || normalizedQuery.includes(normalizedName);
+  });
+
+  if (local) {
+    return {
+      name: local.name,
+      listeners: local.listeners || 0,
+      playcount: local.playcount || 0,
+      bio: `${local.name} is represented in the local catalog and is used when live API data is unavailable.`,
+      tags: local.genres || ['indie', 'alternative'],
+      similar: [],
+    };
+  }
 
   return {
     name: artistName,
-    listeners,
-    playcount,
-    bio: `${artistName} is an emerging recording artist pushing genre boundaries across indie, electronic, and alternative landscapes. Known for expressive songwriting and dedicated underground following.`,
-    tags: ['indie', 'alternative', 'singer-songwriter', 'experimental'],
-    similar: [
-      { name: 'Clairo' },
-      { name: 'Japanese Breakfast' },
-      { name: 'Snail Mail' },
-      { name: 'Lucy Dacus' },
-    ],
+    listeners: 0,
+    playcount: 0,
+    bio: '',
+    tags: [],
+    similar: [],
   };
 }
 

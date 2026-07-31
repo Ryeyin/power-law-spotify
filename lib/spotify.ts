@@ -1,5 +1,7 @@
 import ALL_ARTISTS from '../constants/artistsData.json';
 import { calculateDiscoveryScore } from './discoveryScore';
+import { getLastFmArtistInfo } from './lastfm';
+import { buildPriceHistory, derivePercentChangeFromHistory } from './stockPrice';
 
 const SPOTIFY_CLIENT_ID = (process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_ID || '').trim();
 const SPOTIFY_CLIENT_SECRET = (process.env.EXPO_PUBLIC_SPOTIFY_CLIENT_SECRET || '').trim();
@@ -108,7 +110,7 @@ export async function searchArtists(query: string = '', categoryFilter: string =
           const data = await res.json();
           const items = data.artists?.items || [];
           if (items.length > 0) {
-            const mapped = items.map((art: any) => {
+            const mapped = await Promise.all(items.map(async (art: any) => {
               const followers = art.followers?.total || 50000;
               const popularity = art.popularity || 50;
               const seed = art.name
@@ -116,27 +118,27 @@ export async function searchArtists(query: string = '', categoryFilter: string =
                     [...art.name].reduce((h: number, c: string) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0)
                   )
                 : followers;
-              const discovery = calculateDiscoveryScore(
-                followers,
-                followers * (8 + (seed % 30)),
-                popularity,
-                seed
-              );
+              const lastFmInfo = await getLastFmArtistInfo(art.name);
+              const listeners = lastFmInfo.listeners || followers;
+              const playcount = lastFmInfo.playcount || Math.max(followers * 8, 10000);
+              const discovery = calculateDiscoveryScore(listeners, playcount, popularity, seed);
+              const history = buildPriceHistory(discovery.initialPrice, 7, seed);
+              const percentChange = derivePercentChangeFromHistory(history, discovery.initialPrice);
               return {
                 id: art.id,
                 name: art.name,
                 images: art.images || [],
-                imageUrl: art.images?.[0]?.url || 'https://picsum.photos/300',
+                imageUrl: art.images?.[0]?.url || undefined,
                 genres: art.genres || [],
                 followers: { total: followers },
                 popularity,
                 discoveryScore: discovery.score,
                 badge: discovery.badge,
                 price: discovery.initialPrice,
-                percentChange: discovery.percentChange,
+                percentChange,
                 external_urls: art.external_urls,
               };
-            });
+            }));
             // Sort by price descending (most expensive on top)
             mapped.sort((a: SpotifyArtist, b: SpotifyArtist) => (b.price || 0) - (a.price || 0));
             return mapped;
@@ -167,7 +169,10 @@ export async function searchArtists(query: string = '', categoryFilter: string =
   // Sort by price descending (most expensive on top)
   matches.sort((a: any, b: any) => (b.price || 0) - (a.price || 0));
 
-  return matches.map((a: any) => ({
+  return matches.map((a: any) => {
+    const history = buildPriceHistory(a.price || 20, 7, a.id?.length || 1);
+    const percentChange = derivePercentChangeFromHistory(history, a.price || 20);
+    return {
     id: a.id,
     name: a.name,
     images: [{ url: a.imageUrl }],
@@ -177,10 +182,11 @@ export async function searchArtists(query: string = '', categoryFilter: string =
     popularity: a.popularity,
     discoveryScore: a.discoveryScore,
     badge: a.badge,
-    price: a.price,
-    percentChange: a.percentChange || 1.2,
-    external_urls: { spotify: 'https://open.spotify.com' },
-  }));
+      price: a.price,
+      percentChange,
+      external_urls: { spotify: 'https://open.spotify.com' },
+    };
+  });
 }
 
 
@@ -191,6 +197,8 @@ export async function searchArtists(query: string = '', categoryFilter: string =
 export async function getArtist(artistId: string): Promise<SpotifyArtist | null> {
   const local = (ALL_ARTISTS as any[]).find(a => a.id === artistId || a.name.toLowerCase() === artistId.toLowerCase());
   if (local) {
+    const history = buildPriceHistory(local.price || 20, 7, local.id?.length || 1);
+    const percentChange = derivePercentChangeFromHistory(history, local.price || 20);
     return {
       id: local.id,
       name: local.name,
@@ -202,7 +210,7 @@ export async function getArtist(artistId: string): Promise<SpotifyArtist | null>
       discoveryScore: local.discoveryScore,
       badge: local.badge,
       price: local.price,
-      percentChange: local.percentChange,
+      percentChange,
       external_urls: { spotify: 'https://open.spotify.com' },
     };
   }

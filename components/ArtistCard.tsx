@@ -56,7 +56,7 @@ export const ArtistCard: React.FC<Props> = ({ artist }) => {
           <Text style={styles.priceLabel}>Price</Text>
           <View style={styles.priceBlock}>
             <Text style={[styles.change, isUp ? styles.changeUp : styles.changeDown]}>
-              {isUp ? '▲' : '▼'} {Math.abs(percentChange).toFixed(1)}%
+              {isUp ? '▲' : '▼'} {Math.abs(percentChange).toFixed(1)}% 7d
             </Text>
             <Text style={styles.priceValue}>🪙 {price}</Text>
           </View>
@@ -68,20 +68,20 @@ export const ArtistCard: React.FC<Props> = ({ artist }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 12,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
   image: {
     width: 76,
     height: 76,
     borderRadius: 12,
-    backgroundColor: '#252A3A',
+    backgroundColor: '#F3F5F9',
   },
   content: {
     flex: 1,
@@ -96,13 +96,13 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#F5F5F5',
+    color: '#1F2937',
     flex: 1,
     marginRight: 8,
   },
   genres: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
     textTransform: 'capitalize',
     marginBottom: 8,
   },
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   },
   priceLabel: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: '#6B7280',
     textTransform: 'uppercase',
   },
   priceBlock: {
@@ -134,6 +134,6 @@ const styles = StyleSheet.create({
   priceValue: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#FF6B6B',
   },
 });

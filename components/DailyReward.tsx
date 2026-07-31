@@ -70,21 +70,21 @@ export const DailyReward: React.FC<Props> = ({ userId, coins, onClaimed }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#FF6B6B',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   left: { flex: 1, marginRight: 12 },
-  title: { fontSize: 15, fontWeight: '800', color: '#F5F5F5' },
-  sub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  title: { fontSize: 15, fontWeight: '800', color: '#1F2937' },
+  sub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   btn: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#FF6B6B',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
@@ -92,5 +92,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabled: { opacity: 0.45 },
-  btnText: { color: '#0F1119', fontWeight: '800', fontSize: 13 },
+  btnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
 });

@@ -20,8 +20,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#252A3A',
+    borderBottomColor: '#E5E7EB',
   },
-  label: { fontSize: 13, color: '#9CA3AF' },
-  value: { fontSize: 14, fontWeight: '800', color: '#F5F5F5' },
+  label: { fontSize: 13, color: '#6B7280' },
+  value: { fontSize: 14, fontWeight: '800', color: '#1F2937' },
 });

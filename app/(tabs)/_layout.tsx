@@ -8,7 +8,7 @@ export default function TabLayout() {
 
   if (!isLoaded) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#0F1119', justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: '#F7F8FC', justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" color="#F59E0B" />
       </View>
     );
@@ -23,14 +23,14 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#1A1D2E',
-          borderTopColor: '#252A3A',
+          backgroundColor: '#FFFFFF',
+          borderTopColor: '#E5E7EB',
           height: 60,
           paddingBottom: 8,
           paddingTop: 8,
         },
-        tabBarActiveTintColor: '#F59E0B',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: '#FF6B6B',
+        tabBarInactiveTintColor: '#6B7280',
       }}
     >
       <Tabs.Screen
@@ -74,7 +74,7 @@ export default function TabLayout() {
 
 function TabBarIcon({ symbol, color }: { symbol: string; color: string }) {
   return (
-    <View style={{ opacity: color === '#F59E0B' ? 1 : 0.6 }}>
+    <View style={{ opacity: color === '#FF6B6B' ? 1 : 0.6 }}>
       <Text style={{ fontSize: 18 }}>{symbol}</Text>
     </View>
   );

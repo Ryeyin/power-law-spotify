@@ -17,7 +17,7 @@ import { TrackedArtistRow } from '../../components/TrackedArtistRow';
 import { getTrackedArtists, TrackedArtist } from '../../lib/trackedArtists';
 import { getInvestments } from '../../lib/investments';
 import { getTransactions } from '../../lib/transactions';
-import { lookupArtistPrice } from '../../lib/artistLookup';
+import { refreshArtistPrices, getCachedLivePrice } from '../../lib/artistPrices';
 import { getSavedPlaylists, deleteSavedPlaylist, SavedPlaylist } from '../../lib/savedPlaylists';
 
 export default function ProfileScreen() {
@@ -34,6 +34,7 @@ export default function ProfileScreen() {
     tracked: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [priceRefreshTick, setPriceRefreshTick] = useState(0);
 
   const load = useCallback(async () => {
     if (!user?.id) {
@@ -48,8 +49,18 @@ export default function ProfileScreen() {
         getSavedPlaylists(user.id),
       ]);
 
+      if (investments.length > 0) {
+        await refreshArtistPrices(
+          investments.map((inv) => ({
+            artistId: inv.artistId,
+            artistName: inv.artistName,
+          }))
+        );
+        setPriceRefreshTick((tick) => tick + 1);
+      }
+
       const portfolioValue = investments.reduce((sum, inv) => {
-        const price = lookupArtistPrice(inv.artistId) ?? inv.purchasePrice;
+        const price = getCachedLivePrice(inv.artistId)?.price ?? inv.purchasePrice;
         return sum + price * inv.shares;
       }, 0);
       const costBasis = investments.reduce(
@@ -213,7 +224,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1119',
+    backgroundColor: '#F7F8FC',
   },
   scroll: {
     paddingHorizontal: 16,
@@ -225,22 +236,22 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#F5F5F5',
+    color: '#1F2937',
   },
   profileCard: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 20,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
     marginBottom: 16,
   },
   avatar: {
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#FF6B6B',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -248,72 +259,72 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 28,
     fontWeight: '900',
-    color: '#0F1119',
+    color: '#FFFFFF',
   },
   userName: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F5F5F5',
+    color: '#1F2937',
   },
   userEmail: {
     fontSize: 13,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginTop: 2,
     marginBottom: 12,
   },
   coinPill: {
-    backgroundColor: '#252A3A',
+    backgroundColor: '#F3F5F9',
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#FF6B6B',
   },
   coinPillText: {
-    color: '#F59E0B',
+    color: '#FF6B6B',
     fontWeight: '800',
     fontSize: 13,
   },
   statsCard: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingTop: 14,
     paddingBottom: 4,
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#F5F5F5',
+    color: '#1F2937',
   },
   empty: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 13,
     marginBottom: 12,
   },
   playlistCard: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     borderWidth: 1,
     borderColor: '#252A3A',
   },
-  playlistTitle: { color: '#F5F5F5', fontWeight: '800', fontSize: 15 },
-  playlistMeta: { color: '#9CA3AF', fontSize: 11, marginTop: 4, marginBottom: 8 },
+  playlistTitle: { color: '#1F2937', fontWeight: '800', fontSize: 15 },
+  playlistMeta: { color: '#6B7280', fontSize: 11, marginTop: 4, marginBottom: 8 },
   trackRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: '#252A3A',
+    borderTopColor: '#E5E7EB',
   },
-  trackIndex: { width: 22, color: '#F59E0B', fontWeight: '800', fontSize: 12 },
-  trackName: { color: '#F5F5F5', fontWeight: '700', fontSize: 13 },
-  trackArtist: { color: '#9CA3AF', fontSize: 11, marginTop: 1 },
+  trackIndex: { width: 22, color: '#FF6B6B', fontWeight: '800', fontSize: 12 },
+  trackName: { color: '#1F2937', fontWeight: '700', fontSize: 13 },
+  trackArtist: { color: '#6B7280', fontSize: 11, marginTop: 1 },
   playlistActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',

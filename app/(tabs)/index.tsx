@@ -17,7 +17,7 @@ import { DailyReward } from '../../components/DailyReward';
 import { TrackedArtistRow } from '../../components/TrackedArtistRow';
 import { getTrackedArtists, TrackedArtist } from '../../lib/trackedArtists';
 import { getInvestments, Investment } from '../../lib/investments';
-import { lookupArtistPrice } from '../../lib/artistLookup';
+import { refreshArtistPrices, getCachedLivePrice } from '../../lib/artistPrices';
 
 export default function DashboardScreen() {
   const router = useRouter();
@@ -27,6 +27,7 @@ export default function DashboardScreen() {
   const [investments, setInvestments] = useState<Investment[]>([]);
   const [loadingArtists, setLoadingArtists] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [priceRefreshTick, setPriceRefreshTick] = useState(0);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -35,6 +36,12 @@ export default function DashboardScreen() {
         user?.id ? getTrackedArtists(user.id) : Promise.resolve([]),
         user?.id ? getInvestments(user.id) : Promise.resolve([]),
       ]);
+      if (inv.length > 0) {
+        await refreshArtistPrices(
+          inv.map((i) => ({ artistId: i.artistId, artistName: i.artistName }))
+        );
+        setPriceRefreshTick((tick) => tick + 1);
+      }
       setTrendingArtists(artists.slice(0, 8));
       setTracked(trackedList.slice(0, 8));
       setInvestments(inv.slice(0, 5));
@@ -57,7 +64,7 @@ export default function DashboardScreen() {
   );
 
   const portfolioValue = investments.reduce((sum, inv) => {
-    const price = lookupArtistPrice(inv.artistId) ?? inv.purchasePrice;
+    const price = getCachedLivePrice(inv.artistId)?.price ?? inv.purchasePrice;
     return sum + price * inv.shares;
   }, 0);
   const costBasis = investments.reduce(
@@ -154,7 +161,7 @@ export default function DashboardScreen() {
           <Text style={styles.emptyHint}>Buy shares to see them here.</Text>
         ) : (
           investments.map((inv) => {
-            const price = lookupArtistPrice(inv.artistId) ?? inv.purchasePrice;
+            const price = getCachedLivePrice(inv.artistId)?.price ?? inv.purchasePrice;
             return (
               <TouchableOpacity
                 key={inv.id}
@@ -193,7 +200,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F1119',
+    backgroundColor: '#F7F8FC',
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -208,23 +215,23 @@ const styles = StyleSheet.create({
   },
   welcomeText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
     textTransform: 'uppercase',
   },
   nameText: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#F5F5F5',
+    color: '#1F2937',
   },
   coinBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    borderColor: '#FF6B6B',
     gap: 6,
   },
   coinIcon: {
@@ -233,19 +240,24 @@ const styles = StyleSheet.create({
   coinAmount: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#F59E0B',
+    color: '#FF6B6B',
   },
   portfolioCard: {
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
+    shadowColor: '#94A3B8',
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   cardHeaderLabel: {
     fontSize: 10,
-    color: '#9CA3AF',
+    color: '#6B7280',
     letterSpacing: 1,
     marginBottom: 8,
   },
@@ -256,22 +268,22 @@ const styles = StyleSheet.create({
   },
   balanceLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   balanceValue: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#F59E0B',
+    color: '#FF6B6B',
     marginTop: 2,
   },
   actionBtn: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#FF6B6B',
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 12,
   },
   actionBtnText: {
-    color: '#0F1119',
+    color: '#FFFFFF',
     fontWeight: '800',
     fontSize: 13,
   },
@@ -282,14 +294,16 @@ const styles = StyleSheet.create({
   },
   snapshot: {
     flex: 1,
-    backgroundColor: '#252A3A',
+    backgroundColor: '#F8FAFC',
     borderRadius: 12,
     padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  snapshotLabel: { fontSize: 10, color: '#9CA3AF', textTransform: 'uppercase' },
-  snapshotValue: { fontSize: 15, fontWeight: '800', color: '#F5F5F5', marginTop: 4 },
-  up: { color: '#34D399' },
-  down: { color: '#F87171' },
+  snapshotLabel: { fontSize: 10, color: '#6B7280', textTransform: 'uppercase' },
+  snapshotValue: { fontSize: 15, fontWeight: '800', color: '#1F2937', marginTop: 4 },
+  up: { color: '#14B8A6' },
+  down: { color: '#FF6B6B' },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -299,15 +313,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#F5F5F5',
+    color: '#1F2937',
   },
   seeAllText: {
     fontSize: 13,
-    color: '#F59E0B',
+    color: '#FF6B6B',
     fontWeight: '600',
   },
   emptyHint: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 12,
     marginBottom: 12,
   },
@@ -315,14 +329,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1A1D2E',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#252A3A',
+    borderColor: '#E5E7EB',
   },
-  invName: { color: '#F5F5F5', fontWeight: '700', fontSize: 14 },
-  invMeta: { color: '#9CA3AF', fontSize: 11, marginTop: 2 },
-  invPrice: { color: '#F59E0B', fontWeight: '800' },
+  invName: { color: '#1F2937', fontWeight: '700', fontSize: 14 },
+  invMeta: { color: '#6B7280', fontSize: 11, marginTop: 2 },
+  invPrice: { color: '#FF6B6B', fontWeight: '800' },
 });

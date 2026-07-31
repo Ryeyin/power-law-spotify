@@ -1,7 +1,11 @@
 import ALL_ARTISTS from '../constants/artistsData.json';
+import { lookupLivePrice } from './artistPrices';
 
-/** Look up current price (and related fields) from the local catalog. */
+/** Look up current price — prefers live market price over static catalog. */
 export function lookupArtistPrice(artistId: string): number | null {
+  const live = lookupLivePrice(artistId);
+  if (live !== null) return live;
+
   const local = (ALL_ARTISTS as any[]).find(
     (a) => a.id === artistId || a.name?.toLowerCase() === artistId.toLowerCase()
   );
@@ -19,8 +23,10 @@ export function lookupArtistMeta(artistId: string): {
     (a) => a.id === artistId || a.name?.toLowerCase() === artistId.toLowerCase()
   );
   if (!local) return null;
+
+  const livePrice = lookupLivePrice(artistId);
   return {
-    price: local.price,
+    price: livePrice ?? local.price,
     percentChange: local.percentChange ?? 0,
     imageUrl: local.imageUrl,
     discoveryScore: local.discoveryScore,
