@@ -30,6 +30,21 @@ export function elapsedPriceTicks(lastPriceUpdate: number, now = Date.now()): nu
   return Math.floor((now - lastPriceUpdate) / PRICE_TICK_MS);
 }
 
+export function getPriceRefreshCountdownMs(lastPriceUpdate: number | undefined, now = Date.now()): number {
+  if (!lastPriceUpdate) return 0;
+  return Math.max(0, lastPriceUpdate + PRICE_TICK_MS - now);
+}
+
+export function formatPriceRefreshCountdown(ms: number): string {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s
+    .toString()
+    .padStart(2, '0')}`;
+}
+
 function formatHistoryDate(ts: number): string {
   const day = new Date(ts);
   return day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });

@@ -22,6 +22,7 @@ import { BuyModal } from '../../components/BuyModal';
 import { useUserDoc } from '../../hooks/useUserDoc';
 import { buyShares } from '../../lib/investments';
 import { trackArtist, untrackArtist, isArtistTracked } from '../../lib/trackedArtists';
+import { formatPriceRefreshCountdown, getPriceRefreshCountdownMs } from '../../lib/priceRefresh';
 
 export default function ArtistDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,6 +34,7 @@ export default function ArtistDetailScreen() {
   const [isTracked, setIsTracked] = useState(false);
   const [bioExpanded, setBioExpanded] = useState(false);
   const [buyOpen, setBuyOpen] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     async function loadData() {
@@ -52,6 +54,11 @@ export default function ArtistDetailScreen() {
     }
     loadData();
   }, [id, user?.id]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleBuyConfirm = useCallback(
     async (shares: number) => {
@@ -121,6 +128,11 @@ export default function ArtistDetailScreen() {
     artist.playcount > 1000000
       ? `${(artist.playcount / 1000000).toFixed(1)}M`
       : `${(artist.playcount / 1000).toFixed(0)}k`;
+  const refreshCountdownMs = getPriceRefreshCountdownMs(artist.lastPriceUpdate ?? artist.lastUpdated, now);
+  const refreshCountdownText =
+    refreshCountdownMs > 0
+      ? `Next price refresh in ${formatPriceRefreshCountdown(refreshCountdownMs)}`
+      : 'Price refresh ready now';
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -144,6 +156,11 @@ export default function ArtistDetailScreen() {
               {artist.genres.slice(0, 3).join(' • ') || 'Alternative / Indie'}
             </Text>
           </View>
+        </View>
+
+        <View style={styles.refreshBanner}>
+          <Text style={styles.refreshLabel}>Price refresh</Text>
+          <Text style={styles.refreshValue}>{refreshCountdownText}</Text>
         </View>
 
         <View style={styles.statsGrid}>
@@ -326,6 +343,27 @@ const styles = StyleSheet.create({
     color: '#E5E7EB',
     marginTop: 2,
     textTransform: 'capitalize',
+  },
+  refreshBanner: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  refreshLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  refreshValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 2,
   },
   statsGrid: {
     flexDirection: 'row',
