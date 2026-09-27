@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, ColorValue, View } from 'react-native';
 
 export default function TabLayout() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -72,7 +72,7 @@ export default function TabLayout() {
   );
 }
 
-function TabBarIcon({ symbol, color }: { symbol: string; color: string }) {
+function TabBarIcon({ symbol, color }: { symbol: string; color: ColorValue }) {
   return (
     <View style={{ opacity: color === '#FF6B6B' ? 1 : 0.6 }}>
       <Text style={{ fontSize: 18 }}>{symbol}</Text>
